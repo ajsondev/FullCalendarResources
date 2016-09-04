@@ -1,0 +1,964 @@
+﻿@model FullCal.ViewModels.Resource
+
+@{
+    ViewBag.Title = "Full Calander example";
+}
+
+<br />
+
+
+<div class="row">
+    <!-- scheduler -->
+    <div class="col-md-8">
+        <div id="calendar"></div>
+    </div>
+    <!-- Unassigned tasks -->
+    <div class="col-lg-4">
+        <h3>Unscheduled/assigned diary events</h3>
+
+        <div id='external-events'> <!-- place unassigned task/event data here in div collection .. load either server-side using Razor, or with Ajax - example shown in JS code below. -->
+            <div id='external-events-listing'>
+                <div class='fc-event'>Drag/drop Diary event X</div>
+                <div class='fc-event'>Drag/drop Diary event Y</div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+
+<!-- sample inpage styling .. move to external CSS files once you decide what you need/not-->
+<style>
+    #myModal .modal-dialog {
+        width: 70%;
+    }
+    /** Forces input to fill width of control column **/
+    .FillWide {
+        max-width: 800px;
+    }
+
+    .TextAlignLeft {
+        text-align: left;
+    }
+
+    p {
+        margin: 0 0 0px !important;
+    }
+
+    .modal-body {
+        margin-top: 5px;
+    }
+
+    .modal-header {
+        padding: 15px 15px 48px 15px;
+    }
+
+    #UnScheduledEvents .fc-event {
+        background-color: #fff !important;
+    }
+
+    #UnScheduledEvents .fc-event, .ui-widget .fc-event {
+        color: black !important;
+        font-size: medium !important;
+        border: inherit !important;
+    }
+
+    #UnScheduledEvents table {
+        width: 100% !important;
+    }
+
+    #external-events .fc-event {
+        background-color: #fff !important;
+    }
+
+    #external-events .fc-event, .ui-widget .fc-event {
+        color: black !important;
+        font-size: medium !important;
+        border-color: black !important;
+        padding: 11px 5px 8px 5px !important;
+        border-radius: 0px !important;
+    }
+
+
+
+    .table tr th {
+        max-width: 100px;
+        width: 123px !important;
+    }
+
+    .table tr td {
+        width: 123px !important;
+    }
+
+    .table thead tr {
+        display: flex;
+    }
+
+        .table thead tr th:nth-child(1) {
+            width: 38.5% !important;
+        }
+
+        .table thead tr th:nth-child(2) {
+        }
+
+        .table thead tr th:nth-child(3) {
+        }
+
+    .table tbody tr {
+        display: flex;
+    }
+
+
+
+
+
+        .table tbody tr td:nth-child(1) {
+            word-wrap: break-word;
+        }
+
+        .table tbody tr td:nth-child(2) {
+        }
+
+        .table tbody tr td:nth-child(3) {
+        }
+</style>
+
+
+<!-- Modal popup that allows the user to select between Branch-Office/Employee and Equipment view -->
+<div class="modal" id="filterView">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                <h4 class="modal-title">Filter view</h4>
+            </div>
+            <div class="modal-body">
+                <label>Select view option</label>
+                <label class="radio-inline"><input type="radio" name="rdoResourceView" value="employees">Employee/branch view</label>
+                <label class="radio-inline"><input type="radio" name="rdoResourceView" value="equipment">Equipment view</label>
+
+                <div class="modal-footer">
+                    <a href="#" data-dismiss="modal" class="btn">Close</a>
+                    <a href="#" data-dismiss="modal" class="btn btn-primary" id="btnUpdateView">Update view</a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal popup that allows the user to select any particular settings you may decide such as particular view of employees, some equipment not others, etc -->
+<div class="modal" id="settingsView">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                <h4 class="modal-title">User settings</h4>
+            </div>
+            <div class="modal-body">
+
+                ** Use this section to give user specific <br />
+                settings. For example, a user may wish to view some employees, not others, <br />
+                view different status in different colors etc.
+
+                <div class="modal-footer">
+                    <a href="#" data-dismiss="modal" class="btn">Close</a>
+                    <a href="#" class="btn btn-primary">Save changes</a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal popup to edit an event record -->
+<div class="modal" id="editSelectedModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <a href="#" data-dismiss="modal" class="btn pull-right">Cancel</a>
+                <a href="#" class="btn btn-primary pull-right" id="submitButton">Save</a>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Title</div><div class="col-md-8"><input id="title" type="text" /></div>
+                    </div>
+                </div>
+                <p>&nbsp;</p>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Date/Time Scheduled</div><div class="col-md-6">
+                            <div class='input-group date datetimepicker1'>
+                                <input id="datescheduled" type='text' class="form-control datetimepicker1" />
+                                <span class="input-group-addon">
+                                    <span class="glyphicon glyphicon-calendar"></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <p>&nbsp;</p>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Duration</div><div class="col-md-8"><input id="duration" type="text" /></div>
+                    </div>
+                </div>
+                <p>&nbsp;</p>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Repeat</div><div class="col-md-8"><div id="repeatCRONEdit"></div></div> <!-- auto populates from JS below -->
+                    </div>
+                </div>
+                <p>&nbsp;</p>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Employee</div><div class="col-md-8"><select id="cboEmployees"></select></div> <!-- auto populates from JS below -->
+                    </div>
+                </div>
+                <p>&nbsp;</p>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Equipment</div><div class="col-md-8"><select id="cboEquipment"></select></div> <!-- auto populates from JS below -->
+                    </div>
+                </div>
+                <p>&nbsp;</p>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Branch</div><div class="col-md-8"><input id="branch" type="text" /></div> <!-- perhaps hard code, make dropbox or restrict editing -->
+                    </div>
+                </div>
+                <p>&nbsp;</p>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Client</div><div class="col-md-8"><select id="cboClient"></select></div> <!-- use a seperate popup or typeahead or similar for clients as the list will be too big -->
+                    </div>
+                </div>
+                <p>&nbsp;</p>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Status</div><div class="col-md-8">  <!-- you need to decide on your own status types and set defaults -->
+                            <select id="cboStatus">
+                                <option value="statusScheduled">Scheduled</option>
+                                <option value="statusComplete">Complete</option>
+                                <option value="statusOverdue">Overdue</option>
+                                <option value="statusCanceled">Canceled</option>
+                                <option value="statusUnknown">Unknown</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <p>&nbsp;</p>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Notes</div><div class="col-md-8"><textarea id="notes"></textarea></div>
+                    </div>
+                </div>
+
+
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal popup to create a new event record -->
+<div class="modal" id="newSelectedModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <a href="#" data-dismiss="modal" class="btn pull-right">Cancel</a>
+                <a href="#" class="btn btn-primary pull-right" id="newsubmitButton">Save</a>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Title</div><div class="col-md-8"><input id="newtitle" type="text" /></div>
+                    </div>
+                </div>
+                <p>&nbsp;</p>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Date/Time Scheduled</div><div class="col-md-6">
+                            <div class='input-group date datetimepicker1'>
+                                <input id="newdatescheduled" type='text' class="form-control datetimepicker1" />
+                                <span class="input-group-addon">
+                                    <span class="glyphicon glyphicon-calendar"></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <p>&nbsp;</p>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Duration</div><div class="col-md-8"><input id="newduration" type="text" /></div>
+                    </div>
+                </div>
+                <p>&nbsp;</p>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Repeat</div><div class="col-md-8"><div id="repeatCRON"></div></div> <!-- auto populates from JS below -->
+                    </div>
+                </div>
+                <p>&nbsp;</p>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Employee</div><div class="col-md-8"><select id="newcboEmployees"></select></div> <!-- auto populates from JS below -->
+                    </div>
+                </div>
+                <p>&nbsp;</p>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Equipment</div><div class="col-md-8"><select id="newcboEquipment"></select></div> <!-- auto populates from JS below -->
+                    </div>
+                </div>
+                <p>&nbsp;</p>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Branch</div><div class="col-md-8"><input id="newbranch" type="text" /></div>  <!-- perhaps hard code, make dropbox or restrict editing -->
+                    </div>
+                </div>
+                <p>&nbsp;</p>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Client</div><div class="col-md-8"><select id="newcboClient"></select></div> <!-- use a seperate popup or typeahead or similar for clients as the list will be too big -->
+                    </div>
+                </div>
+                <p>&nbsp;</p>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Status</div><div class="col-md-8">  <!-- you need to decide on your own status types and set defaults -->
+                            <select id="cboStatus">
+                                <option value="statusScheduled">Scheduled</option>
+                                <option value="statusComplete">Complete</option>
+                                <option value="statusOverdue">Overdue</option>
+                                <option value="statusCanceled">Canceled</option>
+                                <option value="statusUnknown">Unknown</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <p>&nbsp;</p>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-4">Notes</div><div class="col-md-8"><textarea id="newnotes"></textarea></div>
+                    </div>
+                </div>
+
+
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts{
+
+    <script src="~/Scripts/moment.js"></script>
+    <link href="~/Content/jquery-ui.css" rel="stylesheet" />
+    <script src="~/Scripts/jquery-ui.min.js"></script>
+    <link href="~/Scripts/fullcalendar-2.6.0/fullcalendar.css" rel="stylesheet" />
+    <script src="~/Scripts/fullcalendar-2.6.0/fullcalendar.js"></script>
+    <link href="~/Scripts/fullcalendar-scheduler-1.2.0/scheduler.css" rel="stylesheet" />
+    <script src="~/Scripts/fullcalendar-scheduler-1.2.0/scheduler.js"></script>
+
+    <link href="~/Content/datepicker.css" rel="stylesheet" />
+    <script src="~/Scripts/bootstrap-datepicker.js"></script>
+    <script src="~/Scripts/bootstrap-datetimepicker.js"></script>
+
+<link href="~/Content/jquery-cron.css" rel="stylesheet" />
+<script src="~/Scripts/jquery-cron.js"></script>
+
+
+
+    <script>
+
+        // static vars
+        var EmployeeList = [];
+        var BranchList = [];
+        var EquipmentList = [];
+        var ClientList = [];
+
+        var statusScheduled = '#e0cc7d';
+        var statusComplete = '#83898e';
+        var statusOverdue = '#ff6a00';
+        var statusUnknown = '#CCCCCC';
+        var statusCanceled = '#CCCCCC';
+
+        var SelectedEvent; // the selected event object
+        var SelectedID; // the selected event ID
+
+        var ResourceView = "";
+
+        // dom init
+        $(function () {
+            ResourceView = "@Model.DefaultView"; // important! ... this is written server-side and defines the current view .. Branch/Employee or Equipment
+            $('input:radio[name="rdoResourceView"]').filter('[value="' + ResourceView + '"]').prop('checked', true);
+            // insert any pre-dom methods you need here
+            GetUnassignedTasks();
+            GetLocationsAndEmployees();
+            LoadAndRenderCalendar();
+
+            $('#btnUpdateView').click(function () {
+                var selectedView = $('input[name="rdoResourceView"]:checked').val();
+                post('/Home/setView', { ResourceView: selectedView }, 'setView');
+
+            });
+
+            //Changing format to e.g.: 11/Mar/2016 13:45
+            $('.datetimepicker1').datetimepicker({ format: 'DD/MMM/YYYY HH:mm' });
+
+            // scan through any unassigned task items for drag/drop and assign the DATA property so that the FullCalander can pick it up on drop.
+            $('#external-events .fc-event').each(function () {
+
+                // store data so the calendar knows to render an event upon drop
+                $(this).data('event', {
+                    title: $.trim($(this).text()), // use the element's text as the event title
+                    stick: true // maintain when user navigates (see docs on the renderEvent method)
+                });
+
+                // make the event draggable using jQuery UI
+                $(this).draggable({
+                    zIndex: 999,
+                    revert: true,      // will cause the event to go back to its
+                    revertDuration: 0  //  original position after the drag
+                });
+
+            });
+            $('#repeatCRON').cron();
+            $('#repeatCRONEdit').cron();
+        });
+
+
+        // wrapper method to send a form POST back to the server so that we dont leave an ugly location title every time we change resource view
+        function post(path, params, method) {
+            var form = document.createElement("form");
+            form.setAttribute("method", method);
+            form.setAttribute("action", path);
+
+            for (var key in params) {
+                if (params.hasOwnProperty(key)) {
+                    var hiddenField = document.createElement("input");
+                    hiddenField.setAttribute("type", "hidden");
+                    hiddenField.setAttribute("name", key);
+                    hiddenField.setAttribute("value", params[key]);
+                    form.appendChild(hiddenField);
+                }
+            }
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+
+        function setResourceView() {
+            ResourceView = $('input[name="rdoResourceView"]:checked').val();
+            LoadResources();
+            LoadAndRenderCalendar();
+        }
+
+
+        function GetResourceView() {
+            return ResourceView;
+        }
+
+
+        function LoadResources() {
+            $('#calendar').fullCalendar('refetchResources');
+        }
+
+        function LoadAndRenderCalendar() {
+            ShowCalendar();
+            $('#calendar').fullCalendar('render');
+        }
+
+        // set up for drag/drop of unassigned tasks into scheduler *example only - if using a large data feed from a database table*
+        function InitDragDrop() {
+            $('.draggable').each(function () {
+
+                // create an Event Object 
+                // ref: (http://arshaw.com/fullcalendar/docs/event_data/Event_Object/)
+                // it doesn't need to have a start or end
+                var table = $('#UnScheduledEvents').DataTable();
+
+                var eventObject = {
+                    id: $(table.row(this).data()[0]).selector,
+                    clientId: $(table.row(this).data()[1]).selector,
+                    start: $(table.row(this).data()[2]).selector,
+                    end: $(table.row(this).data()[3]).selector,
+                    title: $(table.row(this).data()[4]).selector,
+                    duration: $(table.row(this).data()[5]).selector,
+                    notes: $(table.row(this).data()[6]).selector,
+                    color: 'tomato'
+                }
+
+                // gotcha: MUST be named "event", for *external dropped objects* and 
+                // some rules:   http://fullcalendar.io/docs/dropping/eventReceive/
+                $(this).data('event', eventObject);
+
+                // make the event draggable using jQuery UI
+                $(this).draggable({
+                    //helper: "clone", // because its TR??
+                    activeClass: "ui-state-hover",
+                    hoverClass: "ui-state-active",
+                    zIndex: 999,
+                    revert: true,      // will cause the event to go back to its
+                    revertDuration: 0  //  original position after the drag
+                });
+
+            });
+        };
+
+
+        
+        
+        // Main code to initialise/setup and show the calander itself.
+        function ShowCalendar() {
+            $('#calendar').fullCalendar({
+                schedulerLicenseKey: 'GPL-My-Project-Is-Open-Source', // NOTE: change to commercial license if you are using it commercially, play fair!!
+                theme: false,
+                resourceAreaWidth: 230,
+                groupByDateAndResource: false,
+                editable: true,
+                aspectRatio: 1.8,
+                scrollTime: '08:00',
+                timezone: 'local',
+                droppable: true,
+                drop: function (date, jsEvent, ui, resourceId, allDay) { // this function is called when something is dropped
+                    var copiedEventObject = $.extend({}, event);
+                    copiedEventObject.start = date;
+                    copiedEventObject.end = moment(date).add(copiedEventObject.durationMinutes, 'minutes');  
+                    // render the event on the calendar
+                    // the last `true` argument determines if the event "sticks" (http://arshaw.com/fullcalendar/docs/event_rendering/renderEvent/)
+                    $('#calendar').fullCalendar('renderEvent', copiedEventObject, true);
+                    //  remove the element from the "Draggable Events" list
+                    $(this).remove();
+                },
+                eventDragStop: function (event, jsEvent, ui, view) {
+                },
+                eventRender: function (event, element) {
+                },
+                eventReceive: function (event) { // called when a proper external event is dropped  ** this is from the unassigned event/task list **
+                    var confirmDlg = confirm('Are you sure you wish to assign this event?');
+                    if (confirmDlg == true) {
+                        var eventDrag = {
+                            title: event.title,
+                            start: new Date(event.start),
+                            resourceId: event.resourceId,
+                            clientId: null,
+                            duration: 30,
+                            equipmentId: null,
+                            BranchID: null,
+                            statusString: "",
+                            notes: "",
+                        }
+                        UpdateEventMove(eventDrag, null);
+                    }
+                    else {
+                        var endTime = new Date(event.start);
+                        endTime.setMinutes(endTime.getMinutes() + parseInt(30));
+                        $('#calendar').fullCalendar('removeEvents', event._id);
+                        var el = $("<div class='fc-event'>").appendTo('#external-events-listing').text(event.title);
+                        el.draggable({
+                            zIndex: 99999,
+                            revert: true,
+                            revertDuration: 0
+                        });
+                        el.data('event', { title: event.title, start: event.start, end: endTime, id: event.id, duration: event.duration, notes: event.notes, stick: true });
+                    }
+                    console.log('eventReceive', event);
+                },
+                eventDrop: function (event, delta, revertFunc, jsEvent, ui, view) {
+                    var confirmDlg = confirm('Are you sure you wish to move this event?');
+                    if (confirmDlg == true) {
+                        UpdateEventMove(event, view.type);
+                    }
+                    else {
+                        revertFunc();
+                    }
+                    console.log('eventDrop', event);
+                },
+                eventResize: function (event, delta, revertFunc, jsEvent, ui, view) {
+                    if (confirm("Confirm resize?")) {
+                        UpdateEventMove(event, view.type);
+                    }
+                    else revertFunc();
+
+                },
+                // click blank slot for new appt!
+                dayClick: function (date, jsEvent, view, resourceObj) {
+                    if (ResourceView == "employees") {
+                        if (view = "employees") {
+                            var employeeResource = EmployeeList.find( // this says - if the row clicked on is NOT in the known array of employeeID, then drop out (see below, undefined)
+                                function (employee) {
+                                    return employee.EmployeeID == resourceObj.id;
+                                }
+                                )
+                            if (employeeResource != undefined) {
+                                $('#newSelectedModal').modal();
+                                $('#newcboEmployees').empty();
+                                $('#newcboEquipment').empty();
+                                $('#newtitle').val('');
+                                var option = '';
+                                EmployeeList.forEach(function (item) {
+                                    option += '<option value="' + item.EmployeeID + '">' + item.FullName + '</option>';
+                                })
+                                $('#newcboEmployees').append(option);
+
+                                option = '';
+                                EquipmentList.forEach(function (item) {
+                                    option += '<option value="' + item.id + '">' + item.title + '</option>';
+                                })
+                                $('#newcboEquipment').append(option);
+
+                                option = '';
+                                ClientList.forEach(function (item) {
+                                    option += '<option value="' + item.ClientID + '">' + item.Name + '</option>';
+                                })
+                                $('#newcboClient').append(option);
+
+
+                                $('#newcboEmployees').val(resourceObj.id);
+                                $('#newdatescheduled').val(getFormattedDate(date));
+                                $('#newduration').val(30); // assuming default 30 minutes appointment
+                                //  $('#newclient').val(resourceObj.title);
+                            }
+                            else {
+                                alert('Please Choose an employee Row'); // they clicked a branch-office header ... NB! ... you will need to do similar functionality for equipment or any other view you implement
+                            }
+                        }
+                    }
+                    else if (ResourceView == "equipment") {
+                        var eqResource = EquipmentList.find( // this says - if the row clicked on is NOT in the known array of EmployeeID, then drop out (see below, undefined)
+                                function (eq) {
+                                    debugger;
+                                    return eq.id == resourceObj.id;
+                                }
+                                )
+                        if (eqResource != undefined) {
+                            $('#newSelectedModal').modal();
+                            $('#newcboEmployees').empty();
+                            $('#newcboEquipment').empty();
+                            $('#newtitle').val('');
+                            var option = '';
+                            EmployeeList.forEach(function (item) {
+                                option += '<option value="' + item.EmployeeID + '">' + item.FullName + '</option>';
+                            })
+                            $('#newcboEmployees').append(option);
+
+                            option = '';
+                            EquipmentList.forEach(function (item) {
+                                option += '<option value="' + item.id + '">' + item.title + '</option>';
+                            })
+                            $('#newcboEquipment').append(option);
+
+                            option = '';
+                            ClientList.forEach(function (item) {
+                                option += '<option value="' + item.ClientID + '">' + item.Name + '</option>';
+                            })
+                            $('#newcboClient').append(option);
+
+
+                            $('#newcboEquipment').val(resourceObj.id);
+                            $('#newdatescheduled').val(getFormattedDate(date));
+                            $('#newduration').val(30);
+                        }
+
+                    }
+                   // here, implement for equipment view, depending on what kind of headers (or none) you have.
+                },
+                eventClick: function (calEvent, jsEvent, view) {
+                    SelectedEvent = calEvent;
+                    SelectedID = calEvent.id;
+                },
+                header: {
+                    left: 'filterView,settings delete,edit datePicker,today prev,next',  // diary inbuilt menu items
+                    center: 'title',
+                    right: 'timelineDay,agendaWeek,day,month'
+                },
+                defaultView: 'timelineDay',
+                views: {
+                    timelineDay: {
+                        buttonText: 'Timeline',
+                        slotDuration: '00:15'
+                    },
+                    agendaWeek: {
+                        type: 'agendaWeek',
+                        duration: { days: 7 }
+                    }
+                },
+                resourceAreaWidth: '25%',
+                customButtons: { // defined above in 'header'
+                    filterView: {
+                        text: 'Filter view',
+                        click: function () {
+                            $('#filterView').modal();
+                        }
+                    },
+                    settings: {
+                        text: 'Settings',
+                        click: function () {
+                            $('#settingsView').modal();
+                        }
+                    },
+                    delete: {
+                        text: 'Delete selected',
+                        click: function () {
+                            if (SelectedEvent != null) {
+                                alert('delete the selected event: ' + SelectedEvent.title);
+                                $('#calendar').fullCalendar('removeEvents', SelectedEvent.id);
+                                DeleteEvent(SelectedEvent, null);
+                            }
+                            else alert('Please select an event first!');
+                        }
+                    },
+                    edit: {
+                        text: 'Edit selected',
+                        click: function () {
+                            if (SelectedEvent != null) {
+                                $('#editSelectedModal').modal();
+                                // auto load the Employee/equiopmen/cleint dropboxes for example
+                                $('#cboEmployees').empty();
+                                $('#cboEquipment').empty();
+                                var option = '';
+                                EmployeeList.forEach(function (item) {
+                                    option += '<option value="' + item.EmployeeID + '">' + item.FullName + '</option>';
+                                })
+                                $('#cboEmployees').append(option);
+
+                                option = '';
+                                EquipmentList.forEach(function (item) {
+                                    option += '<option value="' + item.id + '">' + item.title + '</option>';
+                                })
+                                $('#cboEquipment').append(option);
+
+                                option = '';
+                                ClientList.forEach(function (item) {
+                                    option += '<option value="' + item.ClientID + '">' + item.Name + '</option>';
+                                })
+                                $('#cboClient').append(option);
+
+                                $('#title').val(SelectedEvent.title);
+                                $('#datescheduled').val(getFormattedDate(SelectedEvent.start));
+                                $('#duration').val(SelectedEvent.duration);
+                                $('#cboEquipment').val(SelectedEvent.equipmentId);
+                                $('#branch').val(SelectedEvent.branchId);
+                                $('#cboClient').val(SelectedEvent.clientId);
+                                $('#notes').val(SelectedEvent.notes);
+                                $('#cboEmployees').val(SelectedEvent.EmployeeId);
+                                $('#cboStatus').val(SelectedEvent.statusString);
+                                if (SelectedEvent.repeat != null)
+                                    $('#repeatCRONEdit').cron("value", SelectedEvent.repeat);
+                                else
+                                    $('#repeatCRONEdit').cron("value", "* * * * *");
+                            }
+                            else alert('Please select an event first!');
+                        }
+                    },
+                    datePicker: {
+                        text: 'Choose date',
+                        click: function () {
+                            alert('implement whatever datepicker you prefer here!');
+                        }
+                    }
+
+                },
+                resourceLabelText: "@Model.ResourceTitle",  //important! ... this is set server-side when the resource view is changed.
+                resources: // this is where the resource loading for laying out the page is triggered from
+                    {
+                    url: '/Home/GetResources',
+                    data: {resourceView : "@Model.DefaultView"},
+                    type: 'POST'
+                },
+                eventSources: [
+                        {
+                            url: '/Home/GetScheduleEvents',
+                            data: {
+                                resourceView: GetResourceView()
+                            },
+                            error: function () {
+                                alert('there was an error while fetching resource data!');
+                            }
+                        }],
+            });
+
+        };
+
+
+        // some helper functions
+
+        function getFormattedDate(date) {
+            var today = new Date(date);
+            var dd = today.getDate();
+            var mm = today.getMonth(); //January is 0!
+            var hh = today.getHours();
+            var min = today.getMinutes();
+            if (hh == 0)
+                hh = '00';
+            if (min == 0)
+                min = '00';
+            var yyyy = today.getFullYear();
+            if (dd < 10) {
+                dd = '0' + dd
+            }
+
+            var month = new Array();
+            month[0] = "Jan";
+            month[1] = "Feb";
+            month[2] = "Mar";
+            month[3] = "Apr";
+            month[4] = "May";
+            month[5] = "Jun";
+            month[6] = "Jul";
+            month[7] = "Aug";
+            month[8] = "Sep";
+            month[9] = "Oct";
+            month[10] = "Nov";
+            month[11] = "Dec";
+
+            var today = dd + '/' + month[mm] + '/' + yyyy + ' ' + hh + ':' + min;
+            return today;
+        }
+
+        $('#submitButton').on('click', function (e) {
+            e.preventDefault();
+            SelectedEvent.title = $('#title').val();
+            SelectedEvent.duration = $('#duration').val();
+            SelectedEvent.equipmentId = $('#cboEquipment').val();
+            SelectedEvent.branchId = $('#branch').val();
+            SelectedEvent.clientId = $('#cboClient').val();
+            SelectedEvent.notes = $('#notes').val();
+            SelectedEvent.resourceId = $('#cboEmployees').val();
+            SelectedEvent.statusString = $('#cboStatus').val();
+            SelectedEvent.repeat = $('#repeatCRONEdit').cron("value")
+            UpdateEventMove(SelectedEvent, null);
+            doSubmit();
+        });
+
+
+
+        $('#newsubmitButton').on('click', function (e) {
+            e.preventDefault();
+            $("#newSelectedModal").modal('hide');
+            var endTime = new Date($('#newdatescheduled').val());
+            endTime.setMinutes(endTime.getMinutes() + parseInt($('#newduration').val()));
+
+            var event = {
+                title: $('#newtitle').val(),
+                start: new Date($('#newdatescheduled').val()),
+                end: endTime,
+                resourceId: $('#newcboEmployees').val(),
+                clientId: $('#newcboClient').val(),
+                duration: $('#newduration').val(),
+                equipmentId: $('#newcboEquipment').val(),
+                BranchID: $('#newbranch').val() == null ? 0 : $('#newbranch').val(),
+                statusString: $('#cboStatus').val(),
+                notes: $('#newnotes').val(),
+                repeat: $('#repeatCRON').cron("value")
+            }
+            UpdateEventMove(event, null);
+            $("#calendar").fullCalendar('refresh');
+            $('#calendar').fullCalendar('refetchEvents');
+        });
+
+        function doSubmit() {
+            $("#editSelectedModal").modal('hide');
+
+            alert("submitted");
+
+            $("#calendar").fullCalendar('renderEvent', SelectedEvent, true);
+            $('#calendar').fullCalendar('refetchEvents');
+        }
+
+
+        function UpdateEventMove(event, view) {
+
+            // determine the view and from this set the correct EmployeeID and ResourceID before sending down to server
+            if (ResourceView == 'employees')
+                event.employeeId = event.resourceId;
+            else {
+                event.employeeId = $('#newcboEmployees').val();
+            }
+            var dataRow = {
+                'Event': event
+            }
+
+
+            $.ajax({
+                type: 'POST',
+                url: "/Home/PushEvent",
+                dataType: "json",
+                contentType: "application/json",
+                data: JSON.stringify(dataRow)
+            });
+        }
+
+
+
+
+        function DeleteEvent(event, view) {
+
+            if (ResourceView == 'employees')
+                event.employeeId = event.resourceId;
+            else {
+
+            }
+            var dataRow = {
+                'Event': event
+            }
+
+            $.ajax({
+                type: 'POST',
+                url: "/Home/DeleteEvent",
+                dataType: "json",
+                contentType: "application/json",
+                data: JSON.stringify(dataRow)
+            });
+        }
+
+        function GetUnassignedTasks() {
+            $.ajax({
+                url: '/home/GetUnnassignedTasks',
+                cache: false,
+                success: function (resultData) {
+                    for (i = 0; i < resultData.length; i++) {
+                        // add unassigned tasks to div or table in this loop
+                    }
+                    InitDragDrop(); // bind data to each object
+                }
+            });
+        };
+
+
+
+        function ClearLists() {
+            EmployeeList = [];
+            BranchList = [];
+            EquipmentList = [];
+            ClientList = [];
+        }
+
+
+        // use this function to get a local list of employees/branches/equipment etc and populate arrays as appropriate.
+        function GetLocationsAndEmployees() {
+            $.ajax({
+                url: '/home/GetSetupInfo',
+                cache: false,
+                success: function (resultData) {
+                    ClearLists();
+                    EmployeeList = resultData.Employees.slice(0);
+                    BranchList = resultData.Branches.slice(0);
+                    EquipmentList = resultData.Equipment.slice(0);
+                    ClientList = resultData.Clients.slice(0); // only used for demo purposes - use a proper grid callback to populate client information
+                }
+            });
+        };
+
+
+    </script>
+}
+
+
+<br />

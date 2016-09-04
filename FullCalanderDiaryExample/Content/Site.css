@@ -1,0 +1,89 @@
+﻿body {
+    padding-top: 50px;
+    padding-bottom: 20px;
+}
+
+/* Set padding to keep content from hitting the edges */
+.body-content {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+/* Override the default bootstrap behavior where horizontal description lists 
+   will truncate terms that are too long to fit in the left column 
+*/
+.dl-horizontal dt {
+    white-space: normal;
+}
+
+/* Set width on the form input elements since they're 100% wide by default */
+input,
+select,
+textarea {
+    max-width: 280px;
+}
+
+
+        h3 {
+            margin-top: 5px;
+        }
+
+        .navbar {
+            height: 40px;
+        }
+
+        .navbar-inverse {
+            background-color: #2D597A;
+            color: #FFFFFF;
+        }
+
+        .navbar-brand {
+            background-color: #2D597A;
+            color: #FFFFFF;
+        }
+
+        .navbar {
+            background-color: #2D597A;
+            color: #FFFFFF;
+        }
+
+        /*div[class="row"] {
+        border: 1px dotted rgba(0, 0, 0, 0.5);
+    }
+    div[class^="col-"] {
+        background-color: rgba(255, 0, 0, 0.2);
+    }*/
+
+
+        /* Style for drag/drop dataTables */
+
+        .droppable { margin: 10px; }
+		/* .draggable { margin: 10px; cursor: move; border: 1px solid #000;} */
+        .selectable { cursor: pointer; }
+
+
+        .draggable { /* try to mimick the look of a real event */
+        /*margin: 10px 0;
+        padding: 2px 4px;
+        background: #2D597A;
+        color: #353434;
+        font-size: .85em;
+        cursor: pointer;
+        width:250px;*/
+                /*margin: 10px 0;*/
+        /*padding: 2px 4px;*/
+        /*background: #a2c1ff;*/
+        /*color: #fff;*/
+        /*font-size: 1.85em;*/
+        cursor: pointer;
+        }
+
+        .ui-draggable-dragging {
+            background:#08C;
+            border-color:gold;
+            color: #fff;
+            /*width:150px;*/
+            padding: 2px 4px;
+            font-size: .85em;
+        }
+
